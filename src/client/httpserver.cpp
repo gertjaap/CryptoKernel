@@ -216,9 +216,9 @@ int HttpServerLocal::callback(void *cls, MHD_Connection *connection, const char 
 }
 
 int HttpServerLocal::accessCallback(void *cls, const struct sockaddr* addr, socklen_t addrlen) {
-    if((*(sockaddr_in*)addr).sin_addr.s_addr != 0x100007f) {
+    /*if((*(sockaddr_in*)addr).sin_addr.s_addr != 0x100007f) {
         return MHD_NO;
-    }
+    }*/
 
     return MHD_YES;
 }

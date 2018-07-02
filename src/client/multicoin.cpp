@@ -94,6 +94,15 @@ std::function<uint64_t(const uint64_t)> CryptoKernel::MulticoinLoader::getSubsid
                 return G * std::pow(r, height);
             }
         };
+    } else if (name == "instamine") {
+        return [](const uint64_t height) {
+            const uint64_t COIN = 100000000;
+            const uint64_t G = 1000000 * COIN;
+            if(height < 5)
+                return G;
+            else 
+                return COIN;
+        };
     } else {
         throw std::runtime_error("Unknown subsidy function " + name);
     }
