@@ -29,6 +29,7 @@
 #include "crypto.h"
 #include "ckmath.h"
 #include "contract.h"
+#include "schnorr.h"
 
 CryptoKernel::Blockchain::Blockchain(CryptoKernel::Log* GlobalLog,
                                      const std::string& dbDir) {
@@ -274,6 +275,25 @@ std::tuple<bool, bool> CryptoKernel::Blockchain::verifyTransaction(Storage::Tran
         inputTotal += out.getValue();
 
         const Json::Value outData = out.getData();
+
+        if(!outData["schnorrKey"].empty() && outData["contract"].empty()) {
+            const Json::Value spendData = inp.getData();
+            if(spendData["signature"].empty()) {
+                log->printf(LOG_LEVEL_INFO,
+                            "blockchain::verifyTransaction(): Could not verify input signature");
+                return std::make_tuple(false, true);
+            }
+
+            CryptoKernel::Schnorr schnorr;
+            schnorr.setPublicKey(outData["schnorrKey"].asString());
+            if(!schnorr.verify(out.getId().toString() + outputHash.toString(),
+                              spendData["signature"].asString())) {
+                log->printf(LOG_LEVEL_INFO,
+                            "blockchain::verifyTransaction(): Could not verify input signature");
+                return std::make_tuple(false, true);
+            }
+        }
+
         if(!outData["publicKey"].empty() && outData["contract"].empty()) {
             const Json::Value spendData = inp.getData();
             if(spendData["signature"].empty()) {
@@ -719,12 +739,12 @@ CryptoKernel::Blockchain::block CryptoKernel::Blockchain::generateVerifyingBlock
     return returning;
 }
 
-std::set<CryptoKernel::Blockchain::output> CryptoKernel::Blockchain::getUnspentOutputs(
+std::set<CryptoKernel::Blockchain::dbOutput> CryptoKernel::Blockchain::getUnspentOutputs(
     const std::string& publicKey) {
     std::lock_guard<std::recursive_mutex> lock(chainLock);
     std::unique_ptr<Storage::Transaction> dbTx(blockdb->begin());
 
-    std::set<output> returning;
+    std::set<dbOutput> returning;
 
     const auto unspent = utxos->get(dbTx.get(), publicKey, 0);
 
@@ -735,12 +755,12 @@ std::set<CryptoKernel::Blockchain::output> CryptoKernel::Blockchain::getUnspentO
     return returning;
 }
 
-std::set<CryptoKernel::Blockchain::output> CryptoKernel::Blockchain::getSpentOutputs(
+std::set<CryptoKernel::Blockchain::dbOutput> CryptoKernel::Blockchain::getSpentOutputs(
     const std::string& publicKey) {
     std::lock_guard<std::recursive_mutex> lock(chainLock);
     std::unique_ptr<Storage::Transaction> dbTx(blockdb->begin());
 
-    std::set<output> returning;
+    std::set<dbOutput> returning;
 
     const auto spent = stxos->get(dbTx.get(), publicKey, 0);
 

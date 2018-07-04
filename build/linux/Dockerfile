@@ -84,10 +84,22 @@ RUN make
 
 WORKDIR ../
 
+RUN wget https://github.com/premake/premake-core/releases/download/v5.0.0-alpha12/premake-5.0.0-alpha12-linux.tar.gz && \
+    tar zxvf premake-5.0.0-alpha12-linux.tar.gz && \
+    cp premake5 /usr/bin
+
 COPY ./cryptokernel /cryptokernel
 
 RUN cp lua-lz4/lz4.so cryptokernel
 
+RUN git clone https://github.com/metalicjames/cschnorr.git
+WORKDIR cschnorr
+RUN premake5 gmake2 && make cschnorr && \
+    mkdir /usr/local/include/cschnorr/ && \
+    cp src/*.h /usr/local/include/cschnorr/ && \
+    cp bin/Static/Debug/libcschnorr.a /usr/local/lib
+WORKDIR ../
+
 WORKDIR cryptokernel
 
-RUN make static KERNELCXXFLAGS="-DSFML_STATIC -I`pwd`/src/kernel"
+RUN premake5 gmake2 && make ckd
