@@ -1,5 +1,6 @@
 #include <sstream>
 #include <math.h>
+#include <random>
 
 #include "regtest.h"
 #include "../crypto.h"
@@ -17,7 +18,7 @@ bool CryptoKernel::Consensus::Regtest::isBlockBetter(Storage::Transaction* trans
 	return blockData.isBetter;
 }
 
-bool CryptoKernel::Consensus::Regtest::checkConsensusRules(Storage::Transaction* transaction, const CryptoKernel::Blockchain::block& block, const CryptoKernel::Blockchain::dbBlock& previousBlock)
+bool CryptoKernel::Consensus::Regtest::checkConsensusRules(Storage::Transaction* transaction, CryptoKernel::Blockchain::block& block, const CryptoKernel::Blockchain::dbBlock& previousBlock)
 {
 	return true;
 }
@@ -67,7 +68,15 @@ void CryptoKernel::Consensus::Regtest::mineBlock(const bool isBetter, const std:
 	Json::Value consensusData = Block.getConsensusData();
 	consensusData["isBetter"] = isBetter;
 	Block.setConsensusData(consensusData);
-	blockchain->submitBlock(Block);
+
+    std::random_device r;
+    std::default_random_engine generator(r());
+    std::uniform_int_distribution<uint64_t> distribution(0, std::numeric_limits<uint64_t>::max());
+
+	auto blockJson = Block.toJson();
+	blockJson["coinbaseTx"]["outputs"][0]["nonce"] = distribution(generator);
+		
+	blockchain->submitBlock(CryptoKernel::Blockchain::block(blockJson));
 }
 
 CryptoKernel::Consensus::Regtest::consensusData
@@ -96,7 +105,6 @@ CryptoKernel::Consensus::Regtest::getConsensusData(const CryptoKernel::Blockchai
 	return data;
 }
 
-
 Json::Value CryptoKernel::Consensus::Regtest::consensusDataToJson(const CryptoKernel::Consensus::Regtest::consensusData& data) 
 {
 	Json::Value returning;
@@ -104,4 +112,4 @@ Json::Value CryptoKernel::Consensus::Regtest::consensusDataToJson(const CryptoKe
 	return returning;
 }
 
-
+void CryptoKernel::Consensus::Regtest::start() {}

@@ -19,6 +19,7 @@
 #define STORAGE_H_INCLUDED
 
 #include <mutex>
+#include <memory>
 
 #include <json/writer.h>
 #include <json/reader.h>
@@ -53,8 +54,8 @@ public:
 
     class Transaction {
     public:
-        Transaction(Storage* db);
-        Transaction(Storage* db, std::recursive_mutex& mut);
+        Transaction(Storage* db, const bool readonly = false);
+        Transaction(Storage* db, std::recursive_mutex& mut, const bool readonly = false);
 
         ~Transaction();
 
@@ -67,6 +68,8 @@ public:
 
         bool ended();
 
+        const leveldb::Snapshot* snapshot;
+
     private:
         struct dbObject {
             Json::Value data;
@@ -75,12 +78,15 @@ public:
         std::map<std::string, dbObject> dbStateCache;
         Storage* db;
         bool finished;
+        bool readonly;
         std::recursive_mutex* mut;
     };
 
     Transaction* begin();
 
     Transaction* begin(std::recursive_mutex& mut);
+
+    Transaction* beginReadOnly();
 
     class Table {
     public:
@@ -93,7 +99,8 @@ public:
 
         class Iterator {
         public:
-            Iterator(Table* table, Storage* db);
+            Iterator(Table* table, Storage* db, const leveldb::Snapshot* snapshot = nullptr,
+                     const std::string& prefix = "", const int index = -1);
 
             ~Iterator();
 
@@ -132,6 +139,7 @@ public:
             Table* table;
             Storage* db;
             std::string prefix;
+            const leveldb::Snapshot* snapshot;
         };
 
         std::string getKey(const std::string& key, const int index = -1);
@@ -168,7 +176,8 @@ public:
 
 private:
     leveldb::DB* db;
-    std::mutex dbMutex;
+    std::mutex readLock;
+    std::mutex writeLock;
     bool sync;
 };
 }
